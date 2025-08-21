@@ -1,0 +1,67 @@
+# Day 1 - Backend (Fastify/Nest)
+
+## A) API Bootstrap
+
+- [ ]  `apps/api`: `npm init -y`
+- [ ]  Install: `npm i fastify @fastify/cors @fastify/cookie axios zod`
+- [ ]  TS/Prisma: `npm i -D typescript ts-node tsx prisma @types/node && npx tsc --init && npx prisma init`
+- [ ]  Set `DATABASE_URL` in `.env`.
+
+## B) DB Schema (Prisma)
+
+- [ ]  Define models:
+    - [ ]  `User { id, descopeUserId, email, createdAt }`
+    - [ ]  `Connection { id, userId, provider, tokenName, accountId?, scopes[], createdAt, updatedAt }`
+    - [ ]  `Event { id, userId?, type, source, payload Json, createdAt }`
+- [ ]  `npx prisma migrate dev -n init`
+- [ ]  `npm i @prisma/client`
+
+## C) Server Essentials
+
+- [ ]  Enable CORS (`credentials: true`, origins for `localhost:3000`).
+- [ ]  Cookie support for Descope session cookie (or accept `Authorization: Bearer <jwt>`).
+- [ ]  `/healthz` returns `{ ok: true }`.
+
+## D) Accept User Session
+
+- [ ]  Add helper to read Descope JWT (cookie or header).
+- [ ]  (Nice-to-have) Verify JWT via Descope JWKS/audience.
+
+## E) Token Broker Endpoints
+
+- [ ]  `GET /connect/:provider/:tokenName`
+    
+    Calls **Descope Outbound “start connection”** API/SDK with the user’s JWT → returns consent URL.
+    
+- [ ]  `GET /token/:provider/:tokenName`
+    
+    Calls **Descope Token Broker** API/SDK with the user’s JWT → returns `{ accessToken, expiresAt, scopes, accountId… }`.
+    
+- [ ]  Do **not** store provider tokens in DB (store only metadata in `Connection`).
+
+## F) Example Actions (prove it works)
+
+- [ ]  `POST /slack/post` → fetch token via `/token/slack/slack_bot`, then `https://slack.com/api/chat.postMessage`.
+- [ ]  (Optional) `GET /google/calendar/events` → fetch token via `/token/google/google_calendar`, call Calendar API.
+
+## G) Events/Webhooks (optional)
+
+- [ ]  `POST /webhooks/descope` → verify signature if provided → insert into `Event`.
+- [ ]  Log `connection.created/updated`, `login.succeeded`.
+
+## H) Frontend Hooks (minimal)
+
+- [ ]  `apps/web`: `npm i @descope/react-sdk axios`
+- [ ]  `.env.local`: `NEXT_PUBLIC_DESCOPE_PROJECT_ID`, `NEXT_PUBLIC_API_URL`.
+- [ ]  `/login` page renders Descope `<Descope projectId flowId="sign-in" />`.
+- [ ]  Home page buttons:
+    - [ ]  “Connect Slack” → calls `/connect/slack/slack_bot` then `window.location = url`.
+    - [ ]  “Connect Google” → `/connect/google/google_calendar`.
+
+## I) Smoke Tests (end-to-end)
+
+- [ ]  Login with Google → frontend has Descope session.
+- [ ]  Click “Connect Slack” → consent → back to app → `/token/slack/slack_bot` returns token.
+- [ ]  `POST /slack/post` sends message to a test channel.
+- [ ]  Repeat for Google scope (e.g., list calendar events).
+- [ ]  DB: `User` row exists; `Connection` upserted; `Event` rows recorded (if webhook on).
